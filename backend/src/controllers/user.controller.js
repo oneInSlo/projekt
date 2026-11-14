@@ -500,7 +500,7 @@ export const updateUser = async function (req, res) {
     }[targetRole];
 
     const result = await withTransaction(async (client) => {
-      let userResult = null;
+      let userResult;
       if (fields.length) {
         const updateValues = [...values, targetId];
         userResult = await client.query(
