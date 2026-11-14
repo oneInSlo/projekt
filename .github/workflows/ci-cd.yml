@@ -36,3 +36,56 @@ jobs:
       - name: Lint frontend (oxlint)
         working-directory: frontend
         run: npm run lint
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install backend production dependencies
+        working-directory: backend
+        run: npm ci --omit=dev
+
+      - name: Check backend syntax
+        working-directory: backend
+        run: find index.js src scripts -name "*.js" -exec node --check {} \;
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          VITE_IMAGE_UPLOAD_URL: ${{ vars.VITE_IMAGE_UPLOAD_URL }}
+        run: npm run build
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-build
+          path: |
+            backend/index.js
+            backend/package.json
+            backend/package-lock.json
+            backend/src
+            backend/db
+            backend/scripts
+          retention-days: 7

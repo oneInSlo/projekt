@@ -1,5 +1,4 @@
 import * as React from "react"
-import { useEffect, useState } from "react"
 import { useNavigate } from "react-router"
 import { LogOut } from "lucide-react"
 
@@ -17,9 +16,6 @@ import {
   SidebarRail,
 } from "../components/ui/sidebar"
 import { useAuth } from "../context/AuthContext"
-import { apiFetch } from "@/lib/api"
-
-type Salon = { id: string; name: string }
 
 const NAV_ITEMS = [
   {
@@ -29,10 +25,8 @@ const NAV_ITEMS = [
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, accessToken, logout } = useAuth()
+  const { user, logout } = useAuth()
   const navigate = useNavigate()
-  const [salon, setSalon] = useState<Salon | null>(null)
-  const [checkedSalon, setCheckedSalon] = useState(false)
 
   const isSalonManager = user?.role === "salon_manager"
 
@@ -40,14 +34,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     await logout()
     navigate("/login", { replace: true })
   }
-
-  useEffect(() => {
-    if (!isSalonManager || !accessToken) return
-
-    apiFetch<{ salon: Salon | null }>("/salons/my-salon", { accessToken })
-      .then((data) => setSalon(data.salon))
-      .finally(() => setCheckedSalon(true))
-  }, [isSalonManager, accessToken])
 
   return (
     <Sidebar {...props} className="bg-[#EBAFE2]/40">
