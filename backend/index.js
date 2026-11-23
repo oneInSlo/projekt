@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import { connectDB, query, pool } from './src/config/db.js'
 const app = express();
+const namernaNapaka = 123;
 app.use(cookieParser());
 app.use(cors({
     origin: [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:3000'],
