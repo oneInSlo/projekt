@@ -6,7 +6,8 @@ export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  // Neon suspends idle databases; waking one up can take a few seconds.
+  connectionTimeoutMillis: 10000,
   ...(process.env.NODE_ENV === 'production' && {
     ssl: { rejectUnauthorized: false },
   }),
