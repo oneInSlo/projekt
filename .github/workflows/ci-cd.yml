@@ -85,9 +85,11 @@ jobs:
             backend/index.js
             backend/package.json
             backend/package-lock.json
+            backend/Dockerfile
             backend/src
             backend/db
             backend/scripts
+            backend/node_modules
           retention-days: 7
 
   test:
@@ -130,3 +132,70 @@ jobs:
             frontend/coverage
           retention-days: 7
           if-no-files-found: warn
+
+  deploy:
+    name: deploy
+    needs: [lint, build, test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.FRONTEND_URL }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download backend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-build
+          path: backend
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend-dist
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Run database migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: node scripts/migrate.js
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package and push backend image
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}-backend:${GITHUB_SHA}"
+          docker build -t "$IMAGE" -t "ghcr.io/${GITHUB_REPOSITORY,,}-backend:latest" backend
+          docker push --all-tags "ghcr.io/${GITHUB_REPOSITORY,,}-backend"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Deploy backend to Render
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          IMAGE_PARAM=$(jq -rn --arg v "$IMAGE" '$v|@uri')
+          curl -fsS -X POST "${RENDER_DEPLOY_HOOK_URL}&imgURL=${IMAGE_PARAM}"
+
+      - name: Deploy frontend to Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          (cd frontend-dist && zip -qr ../site.zip .)
+          curl -fsS -o /dev/null -w "Netlify deploy: HTTP %{http_code}\n" \
+            -H "Authorization: Bearer ${NETLIFY_AUTH_TOKEN}" \
+            -H "Content-Type: application/zip" \
+            --data-binary @site.zip \
+            "https://api.netlify.com/api/v1/sites/${NETLIFY_SITE_ID}/deploys"

@@ -26,7 +26,7 @@ const sendArtistInvitation = async (senderEmail, recipientEmail, firstName, toke
     from: senderEmail,
     to: recipientEmail,
     subject: 'Complete registration as a Nail Artist',
-    text: `Hi ${firstName},\n\nYou have been invited to join a salon on NailBabe. Open this link to finish setting up your account:\n\nhttp://localhost:5173/accept-invitation?token=${token}\n\nThe link expires in 24 hours.`  };
+    text: `Hi ${firstName},\n\nYou have been invited to join a salon on NailBabe. Open this link to finish setting up your account:\n\n${process.env.FRONTEND_URL || 'http://localhost:5173'}/accept-invitation?token=${token}\n\nThe link expires in 24 hours.`  };
 
   return transporter.sendMail(mailOptions);
 };
@@ -173,7 +173,7 @@ export const login = async function (req, res) {
       res.cookie('refresh_token', refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
         path: '/api/v1/users',          
         maxAge: 7 * 24 * 60 * 60 * 1000, 
       });
@@ -241,7 +241,7 @@ export const refresh = async function (req, res) {
     res.cookie('refresh_token', newRefreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
       path: '/api/v1/users',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
